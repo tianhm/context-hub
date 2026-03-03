@@ -3,13 +3,13 @@ import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 
 const CLI_BIN = join(import.meta.dirname, '..', '..', 'bin', 'chub');
-const SAMPLE_CONTENT = join(import.meta.dirname, '..', '..', '..', 'sample-content');
+const FIXTURES = join(import.meta.dirname, '..', '..', 'test', 'fixtures');
 
 describe('chub build', () => {
-  it('validates sample-content and finds docs and skills', () => {
+  it('validates test fixtures and finds docs and skills', () => {
     const result = execFileSync(
       process.execPath,
-      [CLI_BIN, 'build', SAMPLE_CONTENT, '--validate-only', '--json'],
+      [CLI_BIN, 'build', FIXTURES, '--validate-only', '--json'],
       { encoding: 'utf8' },
     );
 
@@ -21,18 +21,16 @@ describe('chub build', () => {
     expect(parsed.skills).toBeGreaterThanOrEqual(1);
   });
 
-  it('finds the openai/chat doc in sample-content', () => {
-    // Run the build and capture full registry output by writing to a temp dir
-    // For now, validate-only mode gives us counts; we verify the discovery works
+  it('finds expected docs and skills in fixtures', () => {
     const result = execFileSync(
       process.execPath,
-      [CLI_BIN, 'build', SAMPLE_CONTENT, '--validate-only', '--json'],
+      [CLI_BIN, 'build', FIXTURES, '--validate-only', '--json'],
       { encoding: 'utf8' },
     );
 
     const parsed = JSON.parse(result.trim());
-    // sample-content has 1 doc (openai/chat) and 1 skill (playwright-community/login-flows)
-    expect(parsed.docs).toBe(1);
+    // test/fixtures has 2 docs (acme/widgets, multilang/client) and 1 skill (testskills/deploy)
+    expect(parsed.docs).toBe(2);
     expect(parsed.skills).toBe(1);
   });
 

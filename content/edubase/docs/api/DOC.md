@@ -79,12 +79,32 @@ Responses return JSON (Content-Type: application/json) with standard HTTP status
 - **406**: Wrong version or feature not available
 - **429**: Rate limit exceeded
 - **500**: Server error
+- **501**: Feature not yet implemented
+- **503**: Service temporarily unavailable (maintenance mode)
 
 On errors, check `EduBase-API-Error` and `EduBase-API-Error-Code` response headers for details.
 
 ## Questions
 
 The most powerful part of the API. Create questions programmatically and upload them to your QuestionBase.
+
+### List Questions
+
+```bash
+curl -d "app={app}&secret={secret}" \
+  https://www.edubase.net/api/v1/questions
+```
+
+Supports `search`, `limit`, and `page` parameters. Returns question ID and external ID (if set).
+
+### Get Question
+
+```bash
+curl -d "app={app}&secret={secret}&id=MATH_ADDITION_001" \
+  https://www.edubase.net/api/v1/question
+```
+
+Check if a question exists by its external ID. Returns `question` (internal ID), `id` (external), `active` status.
 
 ### Create/Update a Question
 
@@ -167,6 +187,25 @@ curl -X POST "https://www.edubase.net/api/v1/question" \
   --data "question_format=LATEX"
 ```
 
+### Delete Question
+
+```bash
+curl -X DELETE -d "app={app}&secret={secret}&id=MATH_ADDITION_001" \
+  https://www.edubase.net/api/v1/question
+```
+
+Permanently deletes a question by its external ID.
+
+### Export Question
+
+```bash
+curl -X POST -d "app={app}&secret={secret}&id=MATH_ADDITION_001" \
+  https://www.edubase.net/api/v1/question:export
+# Returns: {"question":"...","id":"...","url":"...","valid":"2026-04-15"}
+```
+
+Generates a download link for the question in JSON format.
+
 ### Question Types
 
 Supported types: `generic`, `text`, `numerical`, `date/time`, `expression`, `choice`, `multiple-choice`, `order`, `grouping`, `pairing`, `matrix`, `matrix:expression`, `set`, `set:text`, `true/false`, `free-text`, `file`, `hotspot`, `reading`.
@@ -191,16 +230,28 @@ See the **question-types** reference file for detailed documentation on each typ
 | `constraints` | No | Parameter validation rules |
 | `question_format` | No | `NORMAL` (default), `LATEX`, or `LONG` |
 | `hint` | No | Hints separated by `&&&` |
-| `solution` | No | Step-by-step solution text |
+| `solution` | No | Step-by-step solution separated by `&&&` |
+| `explanation` | No | Text shown under answer on results page |
+| `note` | No | Note visible to test takers during quiz |
+| `private_note` | No | Internal note, not visible to test takers |
+| `source` | No | Content attribution and sources |
 | `answer_order` | No | `+` if answer order matters |
 | `answer_label` | No | Labels for answer fields, separated by `&&&` |
 | `answer_hide` | No | `+` to hide correct answers on results page |
 | `answer_require` | No | Number of answers required for full score |
 | `answer_indefinite` | No | `+` to allow dynamic number of input fields |
+| `answer_format` | No | Display format on results: `normal` or `code:{language}` |
 | `subscoring` | No | `PROPORTIONAL` (default), `LINEAR_SUBSTRACTED:N`, `CUSTOM`, `NONE` |
 | `subpoints` | No | Custom point distribution as percentages, separated by `&&&` |
 | `penalty_points` | No | Points deducted for completely wrong answers |
 | `manual_scoring` | No | `NO` (default), `NOT_CORRECT`, `ALWAYS` |
+| `group` | No | Question group name (when uploading to Quiz set) |
+| `tags` | No | User-defined tags, separated by `&&&` |
+| `ai` | No | Set to any value to mark as AI-generated |
+| `image` | No | Attach image: `filename=data` (base64 or URL) |
+| `solution_image` | No | Attach image to solution |
+| `attachment` | No | Attach file: `filename=data` |
+| `media_audio` | No | Attach audio: `filename=data` (MP3, AAC, M4A) |
 
 See the **scoring** reference file for full scoring documentation.
 
@@ -292,6 +343,35 @@ curl -X POST "https://www.edubase.net/api/v1/exam:summary" \
   --data "model=claude-sonnet-4-20250514"
 ```
 
+## Quiz Sets
+
+Quiz sets are collections of questions used for practice or exams. See the **quiz-sets** reference file for full documentation.
+
+### Quick Examples
+
+```bash
+# List quiz sets
+curl -d "app={app}&secret={secret}" https://www.edubase.net/api/v1/quizes
+
+# Create quiz set
+curl -X POST "https://www.edubase.net/api/v1/quiz" \
+  --data "app={app}" \
+  --data "secret={secret}" \
+  --data "title=Physics 101" \
+  --data "mode=TEST" \
+  --data "type=set"
+
+# Add questions to quiz set
+curl -X POST -d "app={app}&secret={secret}&quiz={quiz_id}&questions=q1,q2,q3" \
+  https://www.edubase.net/api/v1/quiz:questions
+
+# List questions in quiz set
+curl -d "app={app}&secret={secret}&quiz={quiz_id}" \
+  https://www.edubase.net/api/v1/quiz:questions
+```
+
+Quiz modes: `TEST` (all questions visible), `TURNS` (one at a time). Types: `set` (practice), `exam`, `private`.
+
 ## Results & Certificates
 
 ### Get Results for a Specific Play
@@ -302,6 +382,15 @@ curl -d "app={app}&secret={secret}&play={play_id}" \
 ```
 
 Returns start/end times, questions total/correct, points total/correct, validity, pass/fail status, and per-question breakdown.
+
+### Get User Results for Quiz Set
+
+```bash
+curl -d "app={app}&secret={secret}&quiz={quiz_id}&user={user_id}" \
+  https://www.edubase.net/api/v1/quiz:results:user
+```
+
+Returns all plays for a user on a specific Quiz set (practice mode).
 
 ### Get User Results for Exam
 
@@ -374,6 +463,10 @@ curl -d "app={app}&secret={secret}&user={user_id}" \
 # Add user to multiple classes
 curl -X POST -d "app={app}&secret={secret}&user={user_id}&classes=cls1,cls2" \
   https://www.edubase.net/api/v1/user:classes
+
+# Remove user from classes
+curl -X DELETE -d "app={app}&secret={secret}&user={user_id}&classes=cls1,cls2" \
+  https://www.edubase.net/api/v1/user:classes
 ```
 
 ## Organizations
@@ -405,6 +498,34 @@ curl -X POST "https://www.edubase.net/api/v1/organization:members" \
 Organization permission levels: `member`, `teacher`, `reporter`, `supervisor`, `admin`.
 Content permission levels: `none`, `view`, `report`, `control`, `modify`, `grant`, `admin`.
 
+## Users
+
+Create and manage user accounts, generate login links, and assume user identity. See the **users** reference file for full documentation.
+
+### Quick Examples
+
+```bash
+# List users
+curl -d "app={app}&secret={secret}" https://www.edubase.net/api/v1/users
+
+# Create user
+curl -X POST "https://www.edubase.net/api/v1/user" \
+  --data "app={app}" \
+  --data "secret={secret}" \
+  --data "username=jsmith" \
+  --data "first_name=John" \
+  --data "last_name=Smith" \
+  --data "email=john@example.com"
+
+# Generate login link
+curl -X POST -d "app={app}&secret={secret}&user={user_id}&expires=7" \
+  https://www.edubase.net/api/v1/user:login
+
+# Search user by email
+curl -d "app={app}&secret={secret}&query=john@example.com" \
+  https://www.edubase.net/api/v1/user:search
+```
+
 ## Permissions
 
 Check, grant, or revoke permissions on any content type (quiz, exam, class, course, event, organization, integration, scorm, video, tag):
@@ -430,6 +551,48 @@ curl -X POST -d "app={app}&secret={secret}&exam={exam_id}&user={user_id}" \
 Replace `exam` with any content type: `quiz`, `class`, `course`, `event`, `organization`, `integration`, `scorm`, `video`, `tag`.
 
 Permission levels: `view`, `report`, `control`, `modify`, `grant`, `admin`. Events also support `finances`.
+
+## Tags
+
+Tags organize and categorize content. Create tags in the EduBase UI, then attach them to content via API.
+
+### List Tags
+
+```bash
+curl -d "app={app}&secret={secret}" https://www.edubase.net/api/v1/tags
+```
+
+### Get Tag Details
+
+```bash
+curl -d "app={app}&secret={secret}&tag={tag_id}" \
+  https://www.edubase.net/api/v1/tag
+# Returns: {"tag":"...","id":null,"name":"...","color":"#FF5733","icon":"fa-book"}
+```
+
+### Attach Tag to Content
+
+Works with all content types: `quiz`, `exam`, `class`, `course`, `event`, `organization`, `integration`, `scorm`, `video`.
+
+```bash
+# Check if tag is attached
+curl -d "app={app}&secret={secret}&exam={exam_id}&tag={tag_id}" \
+  https://www.edubase.net/api/v1/exam:tag
+
+# Attach tag
+curl -X POST -d "app={app}&secret={secret}&exam={exam_id}&tag={tag_id}" \
+  https://www.edubase.net/api/v1/exam:tag
+
+# Detach tag
+curl -X DELETE -d "app={app}&secret={secret}&exam={exam_id}&tag={tag_id}" \
+  https://www.edubase.net/api/v1/exam:tag
+
+# List all tags on content
+curl -d "app={app}&secret={secret}&exam={exam_id}" \
+  https://www.edubase.net/api/v1/exam:tags
+```
+
+Replace `exam` with any content type (`quiz:tag`, `class:tag`, etc.).
 
 ## Integrations
 

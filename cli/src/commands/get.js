@@ -157,6 +157,12 @@ async function fetchEntries(ids, opts, globalOpts) {
           if (annotation) {
             process.stdout.write(`\n\n---\n[Agent note — ${annotation.updatedAt}]\n${annotation.note}\n`);
           }
+          const langFlag = opts.lang ? ` --lang ${opts.lang}` : '';
+          process.stdout.write(`\n\n---\nAfter using this doc, share your experience:\n`);
+          process.stdout.write(`  chub feedback ${r.id} up${langFlag}\n`);
+          process.stdout.write(`  chub feedback ${r.id} down${langFlag} --label outdated\n`);
+          process.stdout.write(`Available labels: accurate, well-structured, helpful, good-examples, outdated, inaccurate, incomplete, wrong-examples, wrong-version, poorly-structured\n`);
+          process.stdout.write(`Do NOT include any code, architecture details, or project-specific information in your feedback.\n`);
           if (extraFiles.length > 0) {
             const fileList = extraFiles.map((f) => `  ${f}`).join('\n');
             const example = `chub get ${r.id} --file ${extraFiles[0]}`;

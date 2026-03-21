@@ -63,6 +63,7 @@ Converts documents to structured markdown with visual grounding.
 | `document_url` | string | One required | Remote document URL |
 | `model` | string | No | Model version (default: `dpt-2-latest`) |
 | `split` | string | No | Split mode: `"page"` to split by pages |
+| `password` | string | No | Decrypt password-protected files (requires ZDR enabled). Supported: PDF, DOC, DOCX, ODT, PPT, PPTX, XLSX |
 
 #### Response Structure
 
@@ -110,7 +111,7 @@ Converts documents to structured markdown with visual grounding.
   ],
   "metadata": {
     "filename": "document.pdf", "org_id": "org_abc123", "page_count": 5,
-    "duration_ms": 1234, "credit_usage": 3, "version": "dpt-2-latest",
+    "duration_ms": 1234, "credit_usage": 3.0, "version": "dpt-2-latest",
     "job_id": "job_abc123", "failed_pages": []
   }
 }
@@ -335,7 +336,6 @@ All errors follow this format:
 | 400 | Bad Request | Invalid request due to malformed input, unsupported version, or client-side errors | Review error message for specific issue |
 | 401 | Unauthorized | Missing or invalid API key | Check that `VISION_AGENT_API_KEY` is present and valid |
 | 402 | Payment Required | Account does not have enough credits | Verify correct API key; add more credits to your account |
-| 413 | Payload Too Large | File exceeds sync parse limit | Use Parse Jobs API for large files |
 | 422 | Unprocessable Entity | Input validation failed | Review request parameters, file format, and schema JSON |
 | 429 | Too Many Requests | Rate limit exceeded | Wait before retrying; implement exponential backoff |
 | 500 | Internal Server Error | Server error during processing | Retry with backoff; if persistent, contact support@landing.ai |
@@ -588,8 +588,8 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     echo "Rate limited. Waiting ${WAIT_TIME}s..." >&2
     sleep $WAIT_TIME
     RETRY_COUNT=$((RETRY_COUNT + 1))
-  elif [ "$HTTP_CODE" -eq 413 ] || [ "$HTTP_CODE" -eq 504 ]; then
-    echo "File too large or timeout — use parse jobs API" >&2
+  elif [ "$HTTP_CODE" -eq 504 ]; then
+    echo "Timeout — use parse jobs API" >&2
     exit 1
   elif [ "$HTTP_CODE" -eq 402 ]; then
     echo "Insufficient credits" >&2
